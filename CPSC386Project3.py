@@ -5,7 +5,7 @@
 import pygame
 import random
 import os
-
+from os import path
 #Set up Pygame attributes
 window_width = 480
 window_height = 600
@@ -20,7 +20,7 @@ color_blue = (0, 0, 255)
 
 #Set up asset's folder
 game_folder = os.path.dirname(__file__) #Automatically sets this directory to where the py file is located
-image_folder = os.path.join(game_folder, "img") #Allows access to folders in game folder
+image_folder = os.path.join(game_folder, "img") #Allows access to image folders in game folder
 
 # Function: Player
 # Date of code (Last updated): 11/10/2017
@@ -34,8 +34,9 @@ class Player(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         #image of the sprite
-        self.image = pygame.image.load(os.path.join(game_folder, "testSprite.png")).convert()
-        self.image.set_colorkey(color_white)    #Ignores RGB value when rendering image, creating transperency
+        playerImage = pygame.image.load(os.path.join(image_folder, "playerShip1_blue.png")).convert()
+        self.image = pygame.transform.scale(playerImage, (50,38))
+        self.image.set_colorkey(color_black)    #Ignores RGB value when rendering image, creating transperency
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
         self.rect.centerx = (window_width / 2)
@@ -102,20 +103,21 @@ class Enemies(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         #image of the sprite
-        self.image = pygame.image.load(os.path.join(game_folder, "testSprite.png")).convert()
-        self.image.set_colorkey(color_white)    #Ignores RGB value when rendering image, creating transperency
+        enemyImage = pygame.image.load(os.path.join(image_folder, "enemyRed2.png")).convert()
+        self.image = pygame.transform.scale(enemyImage, (50,38))
+        self.image.set_colorkey(color_black)    #Ignores RGB value when rendering image, creating transperency
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
 
         #Spawn enemies
         self.rect.x = window_width * (enemy_x / 8)  #Spawns enemies in areas proportioned to window size
         self.rect.y = enemy_y * 20  #Static Y area for enemy to spawn (Subject to change)
-        #self.y_speed = random.randrange(1,8)    #Assigns speed
-        #self.x_speed = random.randrange(-3,3)  #Not sure if I want enemies to move
+        self.y_speed = random.randrange(1,8)    #Assigns speed
+        self.x_speed = random.randrange(-3,3)  #Not sure if I want enemies to move
 
     def update(self):
-        #self.rect.y += self.y_speed
-        #self.rect.x += self.x_speed
+        self.rect.y += self.y_speed
+        self.rect.x += self.x_speed
 
         #Times bullets so player doesn't get swarmed
         bullet_time = pygame.time.get_ticks()
@@ -147,8 +149,8 @@ class player_Bullet(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         #image of the sprite
-        self.image = pygame.Surface((5,20))
-        self.image.fill(color_white)
+        bulletImage = pygame.image.load(path.join(image_folder, "laserBlue16.png")).convert()
+        self.image = pygame.transform.scale(bulletImage, (10, 30))
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
         self.rect.bottom = y
@@ -175,8 +177,9 @@ class enemyBullet(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
 
         #image of the sprite
-        self.image = pygame.Surface((5,5))
-        self.image.fill(color_red)
+        bulletImage = pygame.image.load(path.join(image_folder, "laserRed09.png")).convert()
+        self.image = pygame.transform.scale(bulletImage, (20, 20))
+        self.image.set_colorkey(color_black)
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
 
@@ -206,6 +209,8 @@ pygame.display.set_caption("Terminating Arc")
 clock = pygame.time.Clock()
 
 #Sprites
+background = pygame.image.load(path.join(image_folder, "space.jpg")).convert()
+background_rect = background.get_rect()
 all_sprites = pygame.sprite.Group()
 player = Player()
 all_sprites.add(player)
@@ -251,7 +256,8 @@ while isGameRunning:
     if hits:
         isGameRunning = False
     #Render game background
-    pygameDisplay.fill(color_green)
+    pygameDisplay.fill(color_black)
+    pygameDisplay.blit(background, background_rect)
     all_sprites.draw(pygameDisplay) #Draws sprites to screen
 
     #Enables double buffering; last thing to code
