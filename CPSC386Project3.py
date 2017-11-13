@@ -121,7 +121,7 @@ class Enemies(pygame.sprite.Sprite):
 
         #Times bullets so player doesn't get swarmed
         bullet_time = pygame.time.get_ticks()
-        if (bullet_time % 23 == 1):
+        if (bullet_time % 231 == 1):
             self.shoot()
 
         #If enemies go off screen, respawn them; subject to deletion
