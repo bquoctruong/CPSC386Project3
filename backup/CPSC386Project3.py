@@ -112,8 +112,8 @@ class Enemies(pygame.sprite.Sprite):
         #Spawn enemies
         self.rect.x = window_width * (enemy_x / 8)  #Spawns enemies in areas proportioned to window size
         self.rect.y = enemy_y * 20  #Static Y area for enemy to spawn (Subject to change)
-        self.y_speed = random.randrange(1,3)    #Assigns speed
-        self.x_speed = random.randrange(-1,2)  #Not sure if I want enemies to move
+        self.y_speed = random.randrange(1,8)    #Assigns speed
+        self.x_speed = random.randrange(-3,3)  #Not sure if I want enemies to move
 
     def update(self):
         self.rect.y += self.y_speed
@@ -121,7 +121,7 @@ class Enemies(pygame.sprite.Sprite):
 
         #Times bullets so player doesn't get swarmed
         bullet_time = pygame.time.get_ticks()
-        if (bullet_time % 23 == 1):
+        if (bullet_time % 10 == 1):
             self.shoot()
 
         #If enemies go off screen, respawn them; subject to deletion
@@ -219,7 +219,7 @@ player_bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 
 #Spawn enemies
-for i in range(5):
+for i in range(8):
     enemy = Enemies(i, 1)
     all_sprites.add(enemy)
     enemy_Sprites.add(enemy)
