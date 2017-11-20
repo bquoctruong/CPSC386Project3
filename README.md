@@ -7,3 +7,8 @@
 #Player can now shoot
 #Enemies can now shoot
 #Rough collision implemented for all sprites
+
+#Update 11/19
+#Added a draw text function so score can now be displayed
+#Rudimentary system of scoring added
+#Changed collision to work based off of circles
