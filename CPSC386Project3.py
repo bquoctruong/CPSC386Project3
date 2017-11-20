@@ -22,8 +22,24 @@ color_blue = (0, 0, 255)
 game_folder = os.path.dirname(__file__) #Automatically sets this directory to where the py file is located
 image_folder = os.path.join(game_folder, "img") #Allows access to image folders in game folder
 
+#Automatically searches for the given font on the OS
+font_name = pygame.font.match_font('timesnewroman')
+
+# Function: draw_text
+# Date of code (Last updated): 11/19/2017
+# Programmer: Brian Truong
+# Description: When called, outputs a string onto the surface
+# Input: surface, text, fontSize, x, y
+# Output: 
+def draw_text(surface, text, fontSize, x, y):
+    font = pygame.font.Font(font_name, fontSize)
+    text_surface = font.render(text, True, color_white)
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x,y)
+    surface.blit(text_surface, text_rect)
+
 # Function: Player
-# Date of code (Last updated): 11/10/2017
+# Date of code (Last updated): 11/19/2017
 # Programmer: Brian Truong
 # Description: Class that details attributes for the player, such as sprites, functions
 # Input: Sprite
@@ -39,6 +55,10 @@ class Player(pygame.sprite.Sprite):
         self.image.set_colorkey(color_black)    #Ignores RGB value when rendering image, creating transperency
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
+
+        #Creates radius for accurate hitbox
+        self.radius = 23
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
         self.rect.centerx = (window_width / 2)
         self.rect.bottom = window_height - 10
         self.x_speed = 0
@@ -93,7 +113,7 @@ class Player(pygame.sprite.Sprite):
         player_bullets.add(bullet)
 
 # Function: Enemies
-# Date of code (Last updated): 11/10/2017
+# Date of code (Last updated): 11/19/2017
 # Programmer: Brian Truong
 # Description: Class that contains attributes to the enemy
 # Input: 
@@ -109,6 +129,11 @@ class Enemies(pygame.sprite.Sprite):
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
 
+        #Creates radius to provide an accurate hitbox
+        self.radius = int(15)
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
+        
+
         #Spawn enemies
         self.rect.x = window_width * (enemy_x / 8)  #Spawns enemies in areas proportioned to window size
         self.rect.y = enemy_y * 20  #Static Y area for enemy to spawn (Subject to change)
@@ -121,7 +146,7 @@ class Enemies(pygame.sprite.Sprite):
 
         #Times bullets so player doesn't get swarmed
         bullet_time = pygame.time.get_ticks()
-        if (bullet_time % 231 == 1):
+        if (bullet_time % 23 == 1):
             self.shoot()
 
         #If enemies go off screen, respawn them; subject to deletion
@@ -138,7 +163,7 @@ class Enemies(pygame.sprite.Sprite):
         enemy_bullets.add(bullet)
 
 # Function: player_Bullet
-# Date of code (Last updateu): 11/5/2017
+# Date of code (Last updateu): 11/19/2017
 # Programmer: Brian Truong
 # Description: Class that details attributes of the bullets player fires
 # Input: x, y
@@ -153,6 +178,10 @@ class player_Bullet(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(bulletImage, (10, 30))
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
+
+        #Draws full radius for bullets
+        self.radius = 15
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
         self.rect.bottom = y
         self.rect.centerx = x
         self.y_speed = -20  #Speed of bullet; subject to change
@@ -165,7 +194,7 @@ class player_Bullet(pygame.sprite.Sprite):
             self.kill()
 
 # Function: enemy_Bullet
-# Date of code (Last updateu): 11/5/2017
+# Date of code (Last updateu): 11/19/2017
 # Programmer: Brian Truong
 # Description: Class that details attributes of the bullets enemies fires
 # Input: x, y
@@ -182,6 +211,11 @@ class enemyBullet(pygame.sprite.Sprite):
         self.image.set_colorkey(color_black)
         #rectangle of the sprite
         self.rect = self.image.get_rect()   #obtains rectangle from image
+
+        #Draws radius for enemy bullets
+        self.radius = 8
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
+        
 
         #Set location of enemy bullet
         self.rect.bottom = y
@@ -224,6 +258,9 @@ for i in range(5):
     all_sprites.add(enemy)
     enemy_Sprites.add(enemy)
 
+#Initialize score (Subject to change)
+score = 0
+
 #Game loop
 isGameRunning = True
 while isGameRunning:
@@ -245,13 +282,16 @@ while isGameRunning:
 
     #Respawns enemies when they die (Subject to change)
     for hit in enemy_Hits:
+        #Adds to the player score with every enemy hit
+        score += 50 - hit.radius
         enemy = Enemies(random.randint(0, 7),1)
         all_sprites.add(enemy)
         enemy_Sprites.add(enemy)
 
     #Check to see if enemies hit player
-    hits = pygame.sprite.spritecollide(player, enemy_Sprites, False)
-    hits = pygame.sprite.spritecollide(player, enemy_bullets, False)
+    hits = pygame.sprite.spritecollide(player, enemy_bullets, False, pygame.sprite.collide_circle)
+    hits = pygame.sprite.spritecollide(player, enemy_Sprites, False, pygame.sprite.collide_circle)
+    
     #If player gets hit, the game is over (Subject to change)
     if hits:
         isGameRunning = False
@@ -259,7 +299,7 @@ while isGameRunning:
     pygameDisplay.fill(color_black)
     pygameDisplay.blit(background, background_rect)
     all_sprites.draw(pygameDisplay) #Draws sprites to screen
-
+    draw_text(pygameDisplay, 'Score: ' + str(score), 18, 30, 0)
     #Enables double buffering; last thing to code
     pygame.display.flip()
 
