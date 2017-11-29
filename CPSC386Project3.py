@@ -6,6 +6,13 @@ import pygame
 import random
 import os
 from os import path
+
+#TO-DO 11/29 UPDATE:
+#   -Finish implementing explosions
+#   -Boss Screen
+#   -Upgrade Screen
+#   -Polish/clean code
+
 #Set up Pygame attributes
 window_width = 480
 window_height = 600
@@ -21,6 +28,7 @@ color_blue = (0, 0, 255)
 #Set up asset's folder
 game_folder = os.path.dirname(__file__) #Automatically sets this directory to where the py file is located
 image_folder = os.path.join(game_folder, "img") #Allows access to image folders in game folder
+sound_folder = os.path.join(game_folder, "sound") #Allows access to sound
 
 #Automatically searches for the given font on the OS
 font_name = pygame.font.match_font('timesnewroman')
@@ -38,8 +46,25 @@ def draw_text(surface, text, fontSize, x, y):
     text_rect.midtop = (x,y)
     surface.blit(text_surface, text_rect)
 
+# Function: draw_shield_bar
+# Date of code (Last updated): 11/29/2017
+# Programmer: Brian Truong
+# Description: When called, outputs a bar that shows how much life the player has
+# Input: surface, x, y, percentage
+# Output: 
+def draw_shield_bar(surface, x, y, percentage):
+    if percentage < 0:  #Prevents green bar from going in opposite direction
+        percentage = 0
+    BAR_LENGTH = 100
+    BAR_HEIGHT = 10
+    fill = (percentage / 100) * BAR_LENGTH  #Calculates green bar's length
+    outline_rect = pygame.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)    #Outline for life
+    fill_rect = pygame.Rect(x, y, fill, BAR_HEIGHT)
+    pygame.draw.rect(surface, color_green, fill_rect)
+    pygame.draw.rect(surface, color_white, outline_rect, 2)
+
 # Function: Player
-# Date of code (Last updated): 11/19/2017
+# Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
 # Description: Class that details attributes for the player, such as sprites, functions
 # Input: Sprite
@@ -64,6 +89,9 @@ class Player(pygame.sprite.Sprite):
         self.x_speed = 0
         self.y_speed = 0
 
+        #Player's life/shield
+        self.shield = 100
+
     def update(self):
         #Set stationary speed
         self.x_speed = 0
@@ -87,6 +115,7 @@ class Player(pygame.sprite.Sprite):
         #Shoots bullets (invokes function shoot()) if Spacebar is pressed down
         if keystate[pygame.K_SPACE]:
             self.shoot()
+            playerShootSFX.play()
 
         #Updates speed based on keystate
         self.rect.x += self.x_speed    #Moves sprite 5 pixels to the right
@@ -111,9 +140,10 @@ class Player(pygame.sprite.Sprite):
         all_sprites.add(bullet) #Adds bullet to sprite group
         #Creates a new sprite group for bullets
         player_bullets.add(bullet)
+        #playerShootSFX.play()
 
 # Function: Enemies
-# Date of code (Last updated): 11/19/2017
+# Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
 # Description: Class that contains attributes to the enemy
 # Input: 
@@ -140,14 +170,21 @@ class Enemies(pygame.sprite.Sprite):
         self.y_speed = random.randrange(1,3)    #Assigns speed
         self.x_speed = random.randrange(-1,2)  #Not sure if I want enemies to move
 
+        #Creates a delay to determine when enemies can fire; much more responsive than using mod (11/29)
+        self.shoot_delay = 500
+        self.last_shot = pygame.time.get_ticks()
+
     def update(self):
         self.rect.y += self.y_speed
         self.rect.x += self.x_speed
 
+        self.shoot()
+
+        #11/29: Removed; will determine if it is better than current setup
         #Times bullets so player doesn't get swarmed
-        bullet_time = pygame.time.get_ticks()
-        if (bullet_time % 23 == 1):
-            self.shoot()
+        #bullet_time = pygame.time.get_ticks()
+        #if (bullet_time % 23 == 1):
+        #    self.shoot()
 
         #If enemies go off screen, respawn them; subject to deletion
         if self.rect.top > window_height + 5 or self.rect.left < -25 or self.rect.right > window_width + 25:
@@ -155,12 +192,18 @@ class Enemies(pygame.sprite.Sprite):
             self.rect.x = random.randrange(window_width - self.rect.width)  #Spawns randomly 
             self.rect.y = random.randrange(-100, -40)
             self.y_speed = random.randrange(1,8)    #Assigns speed
+
     #Allows enemies to shoot bullets
     def shoot(self):
-        bullet = enemyBullet(self.rect.centerx, self.rect.bottom)   #Spawns bullet in front of ship
-        all_sprites.add(bullet)
-        #Creates a new sprite group for bullets
-        enemy_bullets.add(bullet)
+        #Newer implementation of shoot delay; adjusted through shoot_delay variable; consistent
+        now = pygame.time.get_ticks()   #Gets current time
+        if now - self.last_shot > self.shoot_delay: #If current time and last fired shot is greater than shoot delay, it will fire a bullet
+            self.last_shot = now
+            bullet = enemyBullet(self.rect.centerx, self.rect.bottom)   #Spawns bullet in front of ship
+            all_sprites.add(bullet)
+            #Creates a new sprite group for bullets
+            enemy_bullets.add(bullet)
+        
 
 # Function: player_Bullet
 # Date of code (Last updateu): 11/19/2017
@@ -233,6 +276,36 @@ class enemyBullet(pygame.sprite.Sprite):
         if self.rect.bottom < 0 or self.rect.right > window_width + 10 or self.rect.left < -10:
             self.kill()
 
+# Class: Explosion
+# Date of code (Last updateu): 11/29/2017
+# Programmer: Brian Truong
+# Description: Class that details attributes of explosions spawned
+# Input: N/A
+# Output: 
+class Explosion(pygame.sprite.Sprite):
+    def __init__(self, center, size):
+        pygame.sprite.Sprite.__init__(self)
+        self.size = size
+        self.image = explosion_animation[self.size][0]
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.frame = 0
+        self.last_update = pygame.time.get_ticks()
+        self.frame_rate = 24
+
+    def update(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_update > self.frame_rate:
+            self.last_update = now
+            self.frame += 1
+            if self.frame == len(explosion_animation[self.size]):
+                self.kill()
+            else:
+                center = self.rect.center
+                self.image = explosion_animation[self.size][self.frame]
+                self.rect = self.image.get_rect()
+                self.rect.center = center
+
 #Start up pygame
 pygame.init()
 pygame.mixer.init()
@@ -241,6 +314,15 @@ pygame.display.set_caption("Terminating Arc")
 
 #Keeps track of clock
 clock = pygame.time.Clock()
+
+#SFX/BGM
+playerShootSFX = pygame.mixer.Sound(path.join(sound_folder, 'Laser_Shoot_Player.wav'))
+playerShootSFX.set_volume(0.4)
+playerExplosionSFX = pygame.mixer.Sound(path.join(sound_folder, 'Explosion_Player.wav'))
+enemyExplosionSFX = pygame.mixer.Sound(path.join(sound_folder, 'Explosion_Enemy.wav'))
+enemyExplosionSFX.set_volume(0.4)
+pygame.mixer.music.load(path.join(sound_folder, 'music_1.ogg'))
+pygame.mixer.music.set_volume(0.4)
 
 #Sprites
 background = pygame.image.load(path.join(image_folder, "space.jpg")).convert()
@@ -252,16 +334,41 @@ enemy_Sprites = pygame.sprite.Group()
 player_bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 
+#List for explosion
+explosion_animation = {}
+explosion_animation['large'] = []
+explosion_animation['small'] = []
+
+for i in range(8):
+    filename = 'explosion0{}.png'.format(i)
+    img = pygame.image.load(path.join(image_folder, filename)).convert()
+    img.set_colorkey(color_black)
+    img_large = pygame.transform.scale(img, (75,75))
+    explosion_animation['large'].append(img_large)
+    img_small = pygame.transform.scale(img, (45,45))
+    explosion_animation['small'].append(img_small)
+
 #Spawn enemies
-for i in range(5):
-    enemy = Enemies(i, 1)
+def spawnEnemies(amountOfEnemies, waves):
+    for i in range(amountOfEnemies):
+        enemy = Enemies(i, 1)
+        all_sprites.add(enemy)
+        enemy_Sprites.add(enemy)
+
+
+#Spawns singular enemies
+def newmob():
+    enemy = Enemies(random.randint(0, 7),1)
     all_sprites.add(enemy)
     enemy_Sprites.add(enemy)
 
 #Initialize score (Subject to change)
-score = 0
+score = 0000000
 
+#Starts game with 8 enemies
+spawnEnemies(8,1)
 #Game loop
+pygame.mixer.music.play(loops=-1)   #Initialize music; makes it loop
 isGameRunning = True
 while isGameRunning:
     #Keep game loop running at the correct FPS
@@ -280,26 +387,43 @@ while isGameRunning:
     enemy_Hits = pygame.sprite.groupcollide(enemy_Sprites, player_bullets, True, True) #First bool is if enemies hit bullets, they get deleted; 2nd bool is if bullets hit enemies, bullets dissapear
     hits = pygame.sprite.groupcollide(enemy_bullets, player_bullets, True, True)    #If player bullets and enemy bullets collide, they both dissappear
 
+    enemiesDefeated = 1
     #Respawns enemies when they die (Subject to change)
+    #while(enemiesDefeated != 16):
     for hit in enemy_Hits:
         #Adds to the player score with every enemy hit
         score += 50 - hit.radius
-        enemy = Enemies(random.randint(0, 7),1)
-        all_sprites.add(enemy)
-        enemy_Sprites.add(enemy)
+        enemyExplosionSFX.play()
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
+        newmob()
+        enemiesDefeated += 1
 
     #Check to see if enemies hit player
-    hits = pygame.sprite.spritecollide(player, enemy_bullets, False, pygame.sprite.collide_circle)
-    hits = pygame.sprite.spritecollide(player, enemy_Sprites, False, pygame.sprite.collide_circle)
+    hits = pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle)
+    enemy_playerCollision = pygame.sprite.spritecollide(player, enemy_Sprites, True, pygame.sprite.collide_circle)
     
     #If player gets hit, the game is over (Subject to change)
-    if hits:
-        isGameRunning = False
+    #11/29: Now if player gets hit, subtracts 20 from his life. If life goes below 0, game is over
+    for hit in hits:
+        #playerExplosionSFX.play()
+        player.shield -= 20
+        newmob()
+        if player.shield <= 0:
+            isGameRunning = False
+    for hit in enemy_playerCollision:
+        #playerExplosionSFX.play()
+        player.shield -= 20
+        newmob()
+        if player.shield <= 0:
+            isGameRunning = False
+
     #Render game background
     pygameDisplay.fill(color_black)
     pygameDisplay.blit(background, background_rect)
     all_sprites.draw(pygameDisplay) #Draws sprites to screen
-    draw_text(pygameDisplay, 'Score: ' + str(score), 18, 30, 0)
+    draw_text(pygameDisplay, 'Score: ' + str(score), 18, 50, 0)
+    draw_shield_bar(pygameDisplay, 5, window_height - 20, player.shield)
     #Enables double buffering; last thing to code
     pygame.display.flip()
 
@@ -307,3 +431,4 @@ pygame.quit()
 
 #Resources:
 #https://www.youtube.com/watch?v=nGufy7weyGY&index=4&list=PLsk-HSGFjnaH5yghzu7PcOzm9NhsW0Urw
+#LEFT OFF: https://youtu.be/AdG_ITCFHDI?t=755
