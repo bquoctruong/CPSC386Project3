@@ -12,3 +12,15 @@
 #Added a draw text function so score can now be displayed
 #Rudimentary system of scoring added
 #Changed collision to work based off of circles
+
+#Update 11/29
+#Additions:
+#-Added SFX/BGM
+#-Added enemy explosions
+#-Changed enemy bullet timing; should be more adjustable
+#-Added player lifebar
+
+#Checklist:
+#-Boss screen
+#-Upgrade screen
+#-Modular stage class
