@@ -7,8 +7,7 @@ import random
 import os
 from os import path
 
-#TO-DO 11/29 UPDATE:
-#   -Finish implementing explosions
+#TO-DO 12/2 UPDATE:
 #   -Boss Screen
 #   -Upgrade Screen
 #   -Polish/clean code
@@ -63,6 +62,13 @@ def draw_shield_bar(surface, x, y, percentage):
     pygame.draw.rect(surface, color_green, fill_rect)
     pygame.draw.rect(surface, color_white, outline_rect, 2)
 
+def draw_lives(surface, x, y, lives, img):
+    for i in range(lives):
+        img_rect = img.get_rect()
+        img_rect.x = x + 30 * i
+        img_rect.y = y
+        surface.blit(img, img_rect)
+
 # Function: Player
 # Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
@@ -92,7 +98,16 @@ class Player(pygame.sprite.Sprite):
         #Player's life/shield
         self.shield = 100
 
+        #Player's lives
+        self.lives = 3
+        self.hidden = False #Flag to not display character
+        self.hide_timer = pygame.time.get_ticks()   #Set up how long player is hidden
+
     def update(self):
+        #Unhide if hidden
+        if self.hidden and pygame.time.get_ticks() - self.hide_timer > 1000:
+            self.hidden = False
+            self.rect.center = (window_width / 2, window_height - 20)
         #Set stationary speed
         self.x_speed = 0
         self.y_speed = 0
@@ -134,6 +149,9 @@ class Player(pygame.sprite.Sprite):
         if self.rect.left < 0:
             self.rect.left = 0
 
+            #hides player
+    
+
     #Allows ship to fire bullets
     def shoot(self):
         bullet = player_Bullet(self.rect.centerx, self.rect.top)   #Spawns bullet in front of ship
@@ -141,6 +159,11 @@ class Player(pygame.sprite.Sprite):
         #Creates a new sprite group for bullets
         player_bullets.add(bullet)
         #playerShootSFX.play()
+
+    def hide(self):
+        self.hidden = True
+        self.hide_timer = pygame.time.get_ticks()
+        self.rect.center = (window_width / 2, window_height + 200)
 
 # Function: Enemies
 # Date of code (Last updated): 11/29/2017
@@ -277,7 +300,7 @@ class enemyBullet(pygame.sprite.Sprite):
             self.kill()
 
 # Class: Explosion
-# Date of code (Last updateu): 11/29/2017
+# Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
 # Description: Class that details attributes of explosions spawned
 # Input: N/A
@@ -306,6 +329,25 @@ class Explosion(pygame.sprite.Sprite):
                 self.rect = self.image.get_rect()
                 self.rect.center = center
 
+# Function: show_go_screen
+# Date (Last updated): 12/2/2017
+# Input: N/A
+# Output: N/A
+# Description: Displays a game over screen; prompts player to try again 
+def show_go_screen():
+    pygameDisplay.blit(background, background_rect)
+    draw_text(pygameDisplay, "Terminating Arc", 64, window_width / 2, window_height / 4)
+    draw_text(pygameDisplay, "WASD - Move, Spacebar - Fire", 22, window_width / 2, window_height / 2)
+    draw_text(pygameDisplay, "Press any key to begin", 18, window_width / 2, window_height * (3/4))
+    pygame.display.flip()
+    waiting = True
+    while waiting:
+        clock.tick(fps)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYUP:
+                waiting = False
 #Start up pygame
 pygame.init()
 pygame.mixer.init()
@@ -318,7 +360,7 @@ clock = pygame.time.Clock()
 #SFX/BGM
 playerShootSFX = pygame.mixer.Sound(path.join(sound_folder, 'Laser_Shoot_Player.wav'))
 playerShootSFX.set_volume(0.4)
-playerExplosionSFX = pygame.mixer.Sound(path.join(sound_folder, 'Explosion_Player.wav'))
+playerExplosionSFX = pygame.mixer.Sound(path.join(sound_folder, 'rumble1.ogg'))
 enemyExplosionSFX = pygame.mixer.Sound(path.join(sound_folder, 'Explosion_Enemy.wav'))
 enemyExplosionSFX.set_volume(0.4)
 pygame.mixer.music.load(path.join(sound_folder, 'music_1.ogg'))
@@ -333,6 +375,8 @@ all_sprites.add(player)
 enemy_Sprites = pygame.sprite.Group()
 player_bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
+player_mini_img = pygame.transform.scale(player.image, (25,19))
+player_mini_img.set_colorkey(color_black)
 
 #List for explosion
 explosion_animation = {}
@@ -343,9 +387,9 @@ for i in range(8):
     filename = 'explosion0{}.png'.format(i)
     img = pygame.image.load(path.join(image_folder, filename)).convert()
     img.set_colorkey(color_black)
-    img_large = pygame.transform.scale(img, (75,75))
+    img_large = pygame.transform.scale(img, (45,45))
     explosion_animation['large'].append(img_large)
-    img_small = pygame.transform.scale(img, (45,45))
+    img_small = pygame.transform.scale(img, (25,25))
     explosion_animation['small'].append(img_small)
 
 #Spawn enemies
@@ -366,11 +410,26 @@ def newmob():
 score = 0000000
 
 #Starts game with 8 enemies
-spawnEnemies(8,1)
+
+
 #Game loop
 pygame.mixer.music.play(loops=-1)   #Initialize music; makes it loop
 isGameRunning = True
+game_over = True
+#spawnEnemies(8,1)
 while isGameRunning:
+    if game_over:
+        show_go_screen()
+        game_over = False
+        all_sprites = pygame.sprite.Group()
+        player = Player()
+        all_sprites.add(player)
+        enemy_Sprites = pygame.sprite.Group()
+        player_bullets = pygame.sprite.Group()
+        enemy_bullets = pygame.sprite.Group()
+        player_mini_img = pygame.transform.scale(player.image, (25,19))
+        player_mini_img.set_colorkey(color_black)
+        spawnEnemies(8,1)
     #Keep game loop running at the correct FPS
     clock.tick(fps)
     #Processes input while game is running
@@ -389,15 +448,17 @@ while isGameRunning:
 
     enemiesDefeated = 1
     #Respawns enemies when they die (Subject to change)
-    #while(enemiesDefeated != 16):
+    #if(enemiesDefeated < 8):
     for hit in enemy_Hits:
         #Adds to the player score with every enemy hit
         score += 50 - hit.radius
+        #Starts explosion SFX and GFX
         enemyExplosionSFX.play()
         explosion = Explosion(hit.rect.center, 'small')
         all_sprites.add(explosion)
-        newmob()
         enemiesDefeated += 1
+        newmob()
+        
 
     #Check to see if enemies hit player
     hits = pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle)
@@ -406,17 +467,31 @@ while isGameRunning:
     #If player gets hit, the game is over (Subject to change)
     #11/29: Now if player gets hit, subtracts 20 from his life. If life goes below 0, game is over
     for hit in hits:
-        #playerExplosionSFX.play()
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
         player.shield -= 20
-        newmob()
         if player.shield <= 0:
-            isGameRunning = False
+            playerExplosionSFX.play()
+            death_explosion = Explosion(player.rect.center, 'large')
+            all_sprites.add(death_explosion)
+            player.hide()
+            player.lives -= 1
+            player.shield = 100
     for hit in enemy_playerCollision:
-        #playerExplosionSFX.play()
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
         player.shield -= 20
-        newmob()
         if player.shield <= 0:
-            isGameRunning = False
+            playerExplosionSFX.play()
+            death_explosion = Explosion(player.rect.center, 'large')
+            all_sprites.add(death_explosion)
+            player.hide()
+            player.lives -= 1
+            player.shield = 100
+
+    #If the player dies and explosion finishes; make sures sprites are killed
+    if player.lives == 0 and not death_explosion.alive():
+        game_over = True
 
     #Render game background
     pygameDisplay.fill(color_black)
@@ -424,6 +499,7 @@ while isGameRunning:
     all_sprites.draw(pygameDisplay) #Draws sprites to screen
     draw_text(pygameDisplay, 'Score: ' + str(score), 18, 50, 0)
     draw_shield_bar(pygameDisplay, 5, window_height - 20, player.shield)
+    draw_lives(pygameDisplay, window_width - 100, 5, player.lives, player_mini_img)
     #Enables double buffering; last thing to code
     pygame.display.flip()
 
