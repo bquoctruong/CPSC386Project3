@@ -454,7 +454,7 @@ class powerup(pygame.sprite.Sprite):
     def __init__(self,x, y):
         pygame.sprite.Sprite.__init__(self)
 
-        self.type = random.choice(['shield'])
+        self.type = random.choice(['shield', 'life'])
         #image of the sprite
         self.image = powerup_images[self.type]
         self.image.set_colorkey(color_black)
@@ -575,6 +575,7 @@ for i in range(8):
 
 powerup_images = {}
 powerup_images['shield'] = pygame.image.load(path.join(image_folder, 'shield.png')).convert()
+powerup_images['life'] = pygame.image.load(path.join(image_folder, 'laser.png')).convert()
 
 # Function: spawnEnemy
 # Date of code (Last Updated): 11/29/2017
@@ -625,6 +626,7 @@ bossOnline = False
 while isGameRunning:
     #Initialize game sprites
     if game_start:
+        spawnRate = 8
         show_title_screen()
         game_start = False
         score = 50
@@ -640,7 +642,7 @@ while isGameRunning:
         boss_Sprite = pygame.sprite.Group()
         boss_bullets = pygame.sprite.Group()
         bossOffine = False
-        spawnEnemies(8,1)
+        spawnEnemies(spawnRate,1)
     #Keep game loop running at the correct FPS
     clock.tick(fps)
     #Processes input while game is running
@@ -670,7 +672,7 @@ while isGameRunning:
             enemyExplosionSFX.play()
             explosion = Explosion(hit.rect.center, 'small')
             all_sprites.add(explosion)
-            if random.random() > 0.9:   #10% chance of getting a powerup
+            if random.random() > 0.95:   #10% chance of getting a powerup
                 pow = powerup(hit.rect.x, hit.rect.y)
                 all_sprites.add(pow)
                 powerup_Sprites.add(pow)
@@ -690,8 +692,9 @@ while isGameRunning:
             player.shield += 10
             if player.shield >= 100:
                 player.shield = 100
-        if hit.type == 'laser':
-            player.powerup()
+        if hit.type == 'life':
+            if player.lives <= 2:   #Prevents stockpiling of lives
+                player.lives += 1
 
 
     #Check to see if enemies hit player
@@ -718,7 +721,8 @@ while isGameRunning:
             bigBoss.shield = 1000
             bigBoss = Boss(window_width / 2, 50)
             bossOnline = False
-            spawnEnemies(8,1)
+            spawnRate += 1
+            spawnEnemies(spawnRate,1)
     
     #11/29: Now if player gets hit, subtracts 20 from his life. If life goes below 0, game is over
     #If enemy bullets hit player, the player takes damage
