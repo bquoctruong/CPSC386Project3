@@ -24,3 +24,13 @@
 #-Boss screen
 #-Upgrade screen
 #-Modular stage class
+
+#Update 12/3
+#Additions:
+#-Added a boss to fight
+#-Added powerups to benefit players
+#-Adjust boss to not overwhelm the player
+#-Changed how game exits; originally caused bug that prevented another playthrough
+
+#Checklist:
+#-Upgrade screen
