@@ -168,6 +168,7 @@ class Player(pygame.sprite.Sprite):
         self.hide_timer = pygame.time.get_ticks()
         self.rect.center = (window_width / 2, window_height + 200)
 
+
 # Function: Enemies
 # Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
@@ -442,6 +443,37 @@ class bossBullet(pygame.sprite.Sprite):
         if self.rect.bottom < 0 or self.rect.right > window_width + 10 or self.rect.left < -10:
             self.kill()
 
+# Function: powerup
+# Date of code (Last updateu): 12/3/2017
+# Programmer: Brian Truong
+# Description: Class that details attributes of the powerups a player may pick up
+# Input: x, y
+# Output: 
+class powerup(pygame.sprite.Sprite):
+    #Initialization of bullet; x,y are used to spawn bullet in front of player ship
+    def __init__(self,x, y):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.type = random.choice(['shield'])
+        #image of the sprite
+        self.image = powerup_images[self.type]
+        self.image.set_colorkey(color_black)
+        #rectangle of the sprite
+        self.rect = self.image.get_rect()   #obtains rectangle from image
+
+        #Draws full radius for bullets
+        self.radius = 15
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
+        self.rect.bottom = y
+        self.rect.centerx = x
+        self.y_speed = 2  #Speed of bullet; subject to change
+
+    #Moves bullet across screen
+    def update(self):
+        self.rect.y += self.y_speed
+        #kill it off it moves off the top of the screen
+        if self.rect.top > window_height + 20:
+            self.kill()
 # Class: Explosion
 # Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
@@ -523,6 +555,7 @@ player_mini_img.set_colorkey(color_black)
 bigBoss = Boss(window_width, window_height)
 boss_Sprite = pygame.sprite.Group()
 boss_bullets = pygame.sprite.Group()
+powerup_Sprites = pygame.sprite.Group()
 
 
 
@@ -539,6 +572,9 @@ for i in range(8):
     explosion_animation['large'].append(img_large)
     img_small = pygame.transform.scale(img, (25,25))
     explosion_animation['small'].append(img_small)
+
+powerup_images = {}
+powerup_images['shield'] = pygame.image.load(path.join(image_folder, 'shield.png')).convert()
 
 # Function: spawnEnemy
 # Date of code (Last Updated): 11/29/2017
@@ -634,6 +670,10 @@ while isGameRunning:
             enemyExplosionSFX.play()
             explosion = Explosion(hit.rect.center, 'small')
             all_sprites.add(explosion)
+            if random.random() > 0.9:   #10% chance of getting a powerup
+                pow = powerup(hit.rect.x, hit.rect.y)
+                all_sprites.add(pow)
+                powerup_Sprites.add(pow)
             #Spawns mob if score is not equal to 1000 and boss is not on screen
             if (score % 1000 != 0 and bossOnline == False):
                 spawnEnemy()
@@ -641,6 +681,18 @@ while isGameRunning:
     if score % 1000 == 0 and bossOnline == False:
         spawnBoss()
         bossOnline = True
+
+    #Checks to see if a powerup hits the player
+    powerup_playerCollision = pygame.sprite.spritecollide(player, powerup_Sprites, True, pygame.sprite.collide_circle)
+
+    for hit in powerup_playerCollision:
+        if hit.type == 'shield':
+            player.shield += 10
+            if player.shield >= 100:
+                player.shield = 100
+        if hit.type == 'laser':
+            player.powerup()
+
 
     #Check to see if enemies hit player
     enemy_playerhits = pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle)
@@ -751,4 +803,3 @@ pygame.quit()
 
 #Resources:
 #https://www.youtube.com/watch?v=nGufy7weyGY&index=4&list=PLsk-HSGFjnaH5yghzu7PcOzm9NhsW0Urw
-#LEFT OFF: https://youtu.be/AdG_ITCFHDI?t=755
