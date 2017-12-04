@@ -98,6 +98,9 @@ class Player(pygame.sprite.Sprite):
         #Player's life/shield
         self.shield = 100
 
+        #Player's damage
+        self.player_damage = 25
+
         #Player's lives
         self.lives = 3
         self.hidden = False #Flag to not display character
@@ -105,7 +108,7 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         #Unhide if hidden
-        if self.hidden and pygame.time.get_ticks() - self.hide_timer > 1000:
+        if self.hidden and pygame.time.get_ticks() - self.hide_timer > 3000:
             self.hidden = False
             self.rect.center = (window_width / 2, window_height - 20)
         #Set stationary speed
@@ -185,6 +188,9 @@ class Enemies(pygame.sprite.Sprite):
         #Creates radius to provide an accurate hitbox
         self.radius = int(15)
         #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
+
+        #Enemy shields
+        self.shield = 25
         
 
         #Spawn enemies
@@ -222,10 +228,97 @@ class Enemies(pygame.sprite.Sprite):
         now = pygame.time.get_ticks()   #Gets current time
         if now - self.last_shot > self.shoot_delay: #If current time and last fired shot is greater than shoot delay, it will fire a bullet
             self.last_shot = now
-            bullet = enemyBullet(self.rect.centerx, self.rect.bottom)   #Spawns bullet in front of ship
+            bullet = bossBullet(self.rect.centerx, self.rect.bottom)   #Spawns bullet in front of ship
             all_sprites.add(bullet)
             #Creates a new sprite group for bullets
             enemy_bullets.add(bullet)
+
+class Boss(pygame.sprite.Sprite):
+    def __init__(self, enemy_x, enemy_y):
+        pygame.sprite.Sprite.__init__(self)
+
+        #image of the sprite
+        bossImage = pygame.image.load(os.path.join(image_folder, "bossShip.png")).convert()
+        self.image = pygame.transform.scale(bossImage, (50,38))
+        self.image.set_colorkey(color_black)    #Ignores RGB value when rendering image, creating transperency
+        #rectangle of the sprite
+        self.rect = self.image.get_rect()   #obtains rectangle from image
+
+        #Creates radius to provide an accurate hitbox
+        self.radius = int(15)
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
+
+        #Flag to determine enemy type
+        #isBoss = False
+
+        #Boss life
+        self.shield = 1000
+        self.hidden = False #Flag to not display character
+        self.hide_timer = pygame.time.get_ticks()   #Set up how long player is hidden
+        
+
+        #Spawn enemies
+        self.rect.x = window_width * (enemy_x / 8)  #Spawns enemies in areas proportioned to window size
+        self.rect.y = enemy_y * 20  #Static Y area for enemy to spawn (Subject to change)
+        
+        #self.y_speed = random.randrange(1, 5) * 5    #Assigns speed
+        #self.x_speed = random.randrange(1, 5) * 5 
+        #self.y_speed = random.randrange(1,3)    #Assigns speed
+        #self.x_speed = random.randrange(-1,2)  #Not sure if I want enemies to move
+
+        #Creates a delay to determine when enemies can fire; much more responsive than using mod (11/29)
+        self.shoot_delay = 100
+        self.last_shot = pygame.time.get_ticks()
+
+        
+    def update(self):
+        #Unhide if hidden
+        if self.hidden and pygame.time.get_ticks() - self.hide_timer > 1000:
+            self.hidden = False
+            self.rect.center = (window_width / 2, window_height - 20)
+        if (player.x_speed == 0 and player.y_speed == 0):
+            self.y_speed = random.randrange(-5, 5) * 3
+            self.x_speed = 0
+        if player.rect.y >= self.rect.y:
+            self.y_speed = random.randrange(2,5)
+        if player.rect.y < self.rect.y:
+            self.y_speed = random.randrange(-5,-2)
+        if player.rect.x >= self.rect.x:
+            self.x_speed = random.randrange(2, 5)
+        if player.rect.x < self.rect.x:
+            self.x_speed = random.randrange(-5, -2)
+        self.rect.y += self.y_speed
+        self.rect.x += self.x_speed
+
+        self.shoot()
+
+        #11/29: Removed; will determine if it is better than current setup
+        #Times bullets so player doesn't get swarmed
+        #bullet_time = pygame.time.get_ticks()
+        #if (bullet_time % 23 == 1):
+        #    self.shoot()
+
+        #If enemies go off screen, respawn them; subject to deletion
+        if self.rect.top > window_height + 5 or self.rect.left < -25 or self.rect.right > window_width + 25:
+            #Spawn enemies
+            self.rect.x = random.randrange(window_width - self.rect.width)  #Spawns randomly 
+            self.rect.y = 0
+            self.y_speed = random.randrange(1,8)    #Assigns speed
+    def hide(self):
+        self.hidden = True
+        self.hide_timer = pygame.time.get_ticks()
+        self.rect.center = (window_width / 2, window_height + 200)
+
+    #Allows enemies to shoot bullets
+    def shoot(self):
+        #Newer implementation of shoot delay; adjusted through shoot_delay variable; consistent
+        now = pygame.time.get_ticks()   #Gets current time
+        if now - self.last_shot > self.shoot_delay: #If current time and last fired shot is greater than shoot delay, it will fire a bullet
+            self.last_shot = now
+            bullet = bossBullet(self.rect.centerx, self.rect.bottom)   #Spawns bullet in front of ship
+            all_sprites.add(bullet)
+            #Creates a new sprite group for bullets
+            boss_bullets.add(bullet)
         
 
 # Function: player_Bullet
@@ -299,6 +392,56 @@ class enemyBullet(pygame.sprite.Sprite):
         if self.rect.bottom < 0 or self.rect.right > window_width + 10 or self.rect.left < -10:
             self.kill()
 
+
+# Function: bossBullets
+# Date of code (Last updateu): 12/3/2017
+# Programmer: Brian Truong
+# Description: Class that details attributes of the bullets the boss fires
+# Input: x, y
+# Output: 
+class bossBullet(pygame.sprite.Sprite):
+
+    #Initializes bullets; x,y allows bullets to spawn in front of enemy ships
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+
+        #image of the sprite
+        bulletImage = pygame.image.load(path.join(image_folder, "laserRed01.png")).convert()
+        self.image = pygame.transform.scale(bulletImage, (10, 30))
+        self.image.set_colorkey(color_black)
+        #rectangle of the sprite
+        self.rect = self.image.get_rect()   #obtains rectangle from image
+
+        #Draws radius for enemy bullets
+        self.radius = 8
+        #pygame.draw.circle(self.image, color_red, self.rect.center, self.radius)
+        
+
+        #Set location of enemy bullet
+        self.rect.bottom = y
+        self.rect.centerx = x
+
+        #Speed of bullet (Subject to change)
+        if player.rect.y >= (window_height / 2):
+            self.y_speed = random.randrange(2,5)
+        if player.rect.y < (window_height / 2):
+            self.y_speed = random.randrange(-5,-2)
+        if player.rect.x == (window_width / 2):
+            self.x_speed = 0
+        if player.rect.x > (window_width / 2):
+            self.x_speed = random.randrange(2, 5)
+        if player.rect.x < (window_width / 2):
+            self.x_speed = random.randrange(-5, -2)
+
+    def update(self):
+        #Update bullet sprite
+        
+        self.rect.y += self.y_speed
+        self.rect.x += self.x_speed
+        #kill it off it moves off the top of the screen
+        if self.rect.bottom < 0 or self.rect.right > window_width + 10 or self.rect.left < -10:
+            self.kill()
+
 # Class: Explosion
 # Date of code (Last updated): 11/29/2017
 # Programmer: Brian Truong
@@ -334,7 +477,7 @@ class Explosion(pygame.sprite.Sprite):
 # Input: N/A
 # Output: N/A
 # Description: Displays a game over screen; prompts player to try again 
-def show_go_screen():
+def show_title_screen():
     pygameDisplay.blit(background, background_rect)
     draw_text(pygameDisplay, "Terminating Arc", 64, window_width / 2, window_height / 4)
     draw_text(pygameDisplay, "WASD - Move, Spacebar - Fire", 22, window_width / 2, window_height / 2)
@@ -377,6 +520,11 @@ player_bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 player_mini_img = pygame.transform.scale(player.image, (25,19))
 player_mini_img.set_colorkey(color_black)
+bigBoss = Boss(window_width, window_height)
+boss_Sprite = pygame.sprite.Group()
+boss_bullets = pygame.sprite.Group()
+
+
 
 #List for explosion
 explosion_animation = {}
@@ -392,35 +540,58 @@ for i in range(8):
     img_small = pygame.transform.scale(img, (25,25))
     explosion_animation['small'].append(img_small)
 
-#Spawn enemies
+# Function: spawnEnemy
+# Date of code (Last Updated): 11/29/2017
+# Programmer: Brian Truong 
+# Description: When called, spawns a singular enemy
+# Input: N/A
+# Output: N/A
+def spawnEnemy():
+    enemy = Enemies(random.randint(0, 7),1)
+    all_sprites.add(enemy)
+    enemy_Sprites.add(enemy)
+
+# Function: spawnEnemies
+# Date of code (Last Updated): 11/29/2017
+# Programmer: Brian Truong 
+# Description: When called, spawns multiple enemies specified in input
+# Input: amountOfEnemies, waves
+# Output: N/A
 def spawnEnemies(amountOfEnemies, waves):
     for i in range(amountOfEnemies):
         enemy = Enemies(i, 1)
         all_sprites.add(enemy)
         enemy_Sprites.add(enemy)
 
-
-#Spawns singular enemies
-def newmob():
-    enemy = Enemies(random.randint(0, 7),1)
-    all_sprites.add(enemy)
-    enemy_Sprites.add(enemy)
+# Function: spawnBoss
+# Date of code (Last Updated): 12/1/2017
+# Programmer: Brian Truong 
+# Description: When called, spawns and enables the boss
+# Input: N/A
+# Output: N/A
+def spawnBoss():
+    #bigBoss = Boss(window_width, window_height)
+    all_sprites.add(bigBoss)
+    boss_Sprite.add(bigBoss)
+    bossOnline = True
 
 #Initialize score (Subject to change)
-score = 0000000
-
-#Starts game with 8 enemies
-
+score = 50
 
 #Game loop
 pygame.mixer.music.play(loops=-1)   #Initialize music; makes it loop
+
+#Initialize flags to monitor game
 isGameRunning = True
-game_over = True
-#spawnEnemies(8,1)
+game_start = True
+bossOnline = False
+
 while isGameRunning:
-    if game_over:
-        show_go_screen()
-        game_over = False
+    #Initialize game sprites
+    if game_start:
+        show_title_screen()
+        game_start = False
+        score = 50
         all_sprites = pygame.sprite.Group()
         player = Player()
         all_sprites.add(player)
@@ -429,6 +600,10 @@ while isGameRunning:
         enemy_bullets = pygame.sprite.Group()
         player_mini_img = pygame.transform.scale(player.image, (25,19))
         player_mini_img.set_colorkey(color_black)
+        bigBoss = Boss(window_width / 2, 50)
+        boss_Sprite = pygame.sprite.Group()
+        boss_bullets = pygame.sprite.Group()
+        bossOffine = False
         spawnEnemies(8,1)
     #Keep game loop running at the correct FPS
     clock.tick(fps)
@@ -444,44 +619,112 @@ while isGameRunning:
 
     #Check to see if a bullet hit a mob
     enemy_Hits = pygame.sprite.groupcollide(enemy_Sprites, player_bullets, True, True) #First bool is if enemies hit bullets, they get deleted; 2nd bool is if bullets hit enemies, bullets dissapear
-    hits = pygame.sprite.groupcollide(enemy_bullets, player_bullets, True, True)    #If player bullets and enemy bullets collide, they both dissappear
+    enemy_playerhits = pygame.sprite.groupcollide(enemy_bullets, player_bullets, True, True)    #If player bullets and enemy bullets collide, they both dissappear
 
-    enemiesDefeated = 1
+    #Checks to see if player hits boss
+    boss_Hits = pygame.sprite.spritecollide(bigBoss, player_bullets, True, pygame.sprite.collide_circle)
+    
+   
     #Respawns enemies when they die (Subject to change)
-    #if(enemiesDefeated < 8):
-    for hit in enemy_Hits:
-        #Adds to the player score with every enemy hit
-        score += 50 - hit.radius
-        #Starts explosion SFX and GFX
-        enemyExplosionSFX.play()
-        explosion = Explosion(hit.rect.center, 'small')
-        all_sprites.add(explosion)
-        enemiesDefeated += 1
-        newmob()
-        
+    if(bossOnline == False):
+        for hit in enemy_Hits:
+            #Adds to the player score with every enemy hit
+            score += 50
+            #Starts explosion SFX and GFX
+            enemyExplosionSFX.play()
+            explosion = Explosion(hit.rect.center, 'small')
+            all_sprites.add(explosion)
+            #Spawns mob if score is not equal to 1000 and boss is not on screen
+            if (score % 1000 != 0 and bossOnline == False):
+                spawnEnemy()
+    #Spawns boss if score every 1000 score
+    if score % 1000 == 0 and bossOnline == False:
+        spawnBoss()
+        bossOnline = True
 
     #Check to see if enemies hit player
-    hits = pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle)
+    enemy_playerhits = pygame.sprite.spritecollide(player, enemy_bullets, True, pygame.sprite.collide_circle)
     enemy_playerCollision = pygame.sprite.spritecollide(player, enemy_Sprites, True, pygame.sprite.collide_circle)
+
+    #Checks to see if boss hit player
+    boss_playerhits = pygame.sprite.spritecollide(player, boss_bullets, True, pygame.sprite.collide_circle)
+    boss_playerCollision = pygame.sprite.spritecollide(player, boss_Sprite, False, pygame.sprite.collide_circle)
+
+    #Checks to see if the player hits the boss
+    player_bosshits = pygame.sprite.spritecollide(bigBoss, player_bullets, True)
+
+    #If player shoots and hits the boss, it will damage the boss
+    for hit in player_bosshits:
+        bigBoss.shield -= player.player_damage
+        if bigBoss.shield <= 0:
+            score += 50
+            enemyExplosionSFX.play()
+            explosion = Explosion(hit.rect.center, 'small')
+            all_sprites.add(explosion)
+            bigBoss.kill()
+            bigBoss.hide()
+            bigBoss.shield = 1000
+            bigBoss = Boss(window_width / 2, 50)
+            bossOnline = False
+            spawnEnemies(8,1)
     
-    #If player gets hit, the game is over (Subject to change)
     #11/29: Now if player gets hit, subtracts 20 from his life. If life goes below 0, game is over
-    for hit in hits:
+    #If enemy bullets hit player, the player takes damage
+    for hit in enemy_playerhits:
         explosion = Explosion(hit.rect.center, 'small')
         all_sprites.add(explosion)
         player.shield -= 20
         if player.shield <= 0:
+            player.shield = 0
+        if player.shield == 0:
             playerExplosionSFX.play()
             death_explosion = Explosion(player.rect.center, 'large')
             all_sprites.add(death_explosion)
             player.hide()
             player.lives -= 1
             player.shield = 100
+    #if the enemy collides with the player, the enemy dies and player takes damage
     for hit in enemy_playerCollision:
+        score += 50
         explosion = Explosion(hit.rect.center, 'small')
         all_sprites.add(explosion)
         player.shield -= 20
         if player.shield <= 0:
+            player.shield = 0
+        if player.shield == 0:
+            playerExplosionSFX.play()
+            death_explosion = Explosion(player.rect.center, 'large')
+            all_sprites.add(death_explosion)
+            player.hide()
+            player.lives -= 1
+            player.shield = 100
+        spawnEnemy()    #Prevents player from wiping screen of enemies by ramming into them
+
+    #If the boss hits the player with bullets, the player takes damage
+    for hit in boss_playerhits:
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
+        player.shield -= 20
+        if player.shield <= 0:
+            player.shield = 0
+        if player.shield == 0:
+            playerExplosionSFX.play()
+            death_explosion = Explosion(player.rect.center, 'large')
+            all_sprites.add(death_explosion)
+            player.hide()
+            player.lives -= 1
+            player.shield = 100
+    #If the boss collides with the player, the player takes damage
+    for hit in boss_playerCollision:
+        explosion = Explosion(hit.rect.center, 'small')
+        all_sprites.add(explosion)
+        #Resets boss position so it doesn't outright kill the player in spawn
+        bigBoss.rect.x = window_width / 2
+        bigBoss.rect.y = 50
+        player.shield -= 20
+        if player.shield <= 0:
+            player.shield = 0
+        if player.shield == 0:
             playerExplosionSFX.play()
             death_explosion = Explosion(player.rect.center, 'large')
             all_sprites.add(death_explosion)
@@ -490,8 +733,9 @@ while isGameRunning:
             player.shield = 100
 
     #If the player dies and explosion finishes; make sures sprites are killed
-    if player.lives == 0 and not death_explosion.alive():
-        game_over = True
+    if player.lives <= 0 and not death_explosion.alive():
+        #game_over = True
+        isGameRunning = False
 
     #Render game background
     pygameDisplay.fill(color_black)
